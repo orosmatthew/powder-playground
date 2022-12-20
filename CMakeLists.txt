@@ -14,6 +14,7 @@ set(LIB_INCLUDES
 set(SOURCE_FILES
         src/main.cpp
         src/fixed_loop.cpp
+        src/powder_playground.cpp
         )
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
