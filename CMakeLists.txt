@@ -9,6 +9,7 @@ add_subdirectory(lib/raylib-cpp-4.2.7)
 
 set(LIB_INCLUDES
         lib/raygui-3.2/include
+        lib/thread-pool-3.3.0/include
         )
 
 set(SOURCE_FILES
