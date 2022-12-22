@@ -12,8 +12,14 @@ namespace rl = raylib;
 
 namespace pop {
 
+enum class ParticleType {
+    e_null,
+    e_salt,
+    e_water,
+};
+
 struct Particle {
-    bool exists = false;
+    ParticleType type = ParticleType::e_null;
     bool modified = false;
     float shade = 1.0f;
 };
@@ -74,33 +80,49 @@ void update_sim(SimState& sim_state, std::mt19937& rand_engine)
     }
 
     for (int i : rand_indices) {
-        if (sim_state.space.at(i).modified || !sim_state.space.at(i).exists) {
+        if (sim_state.space.at(i).modified || sim_state.space.at(i).type == ParticleType::e_null) {
             continue;
         }
 
         Vector2i pos = sim_state.get_pos(i);
 
-        if (!sim_state.in_space({ pos.x, pos.y + 1 })) {
-            continue;
+        if (sim_state.in_space({ pos.x, pos.y + 1 })) {
+            Vector2i bottom_pos { pos.x, pos.y + 1 };
+            if (sim_state.particle_at(bottom_pos).type == ParticleType::e_null
+                && !sim_state.particle_at(bottom_pos).modified) {
+                sim_state.swap(pos, bottom_pos);
+                sim_state.space.at(i).modified = true;
+                sim_state.particle_at(bottom_pos).modified = true;
+                continue;
+            }
+            else {
+                int val = GetRandomValue(0, 1);
+                if (val == 0) {
+                    val = -1;
+                }
+                Vector2i diag_pos { pos.x + val, pos.y + 1 };
+                if (sim_state.in_space(diag_pos) && sim_state.particle_at(diag_pos).type == ParticleType::e_null
+                    && !sim_state.particle_at(diag_pos).modified) {
+                    sim_state.swap(pos, diag_pos);
+                    sim_state.space.at(i).modified = true;
+                    sim_state.particle_at(diag_pos).modified = true;
+                    continue;
+                }
+            }
         }
 
-        Vector2i bottom_pos { pos.x, pos.y + 1 };
-        if (!sim_state.particle_at(bottom_pos).exists && !sim_state.particle_at(bottom_pos).modified) {
-            sim_state.swap(pos, bottom_pos);
-            sim_state.space.at(i).modified = true;
-            sim_state.particle_at(bottom_pos).modified = true;
-        }
-        else {
+        if (sim_state.particle_at(pos).type == ParticleType::e_water) {
             int val = GetRandomValue(0, 1);
             if (val == 0) {
                 val = -1;
             }
-            Vector2i diag_pos { pos.x + val, pos.y + 1 };
-            if (sim_state.in_space(diag_pos) && !sim_state.particle_at(diag_pos).exists
-                && !sim_state.particle_at(diag_pos).modified) {
-                sim_state.swap(pos, diag_pos);
+            Vector2i side_pos { pos.x + val, pos.y };
+            if (sim_state.in_space(side_pos) && !sim_state.particle_at(side_pos).modified
+                && sim_state.particle_at(side_pos).type == ParticleType::e_null) {
+                sim_state.swap(pos, side_pos);
                 sim_state.space.at(i).modified = true;
-                sim_state.particle_at(diag_pos).modified = true;
+                sim_state.particle_at(side_pos).modified = true;
+                continue;
             }
         }
     }
@@ -141,8 +163,11 @@ void draw_sim(rl::Image& render_image, const SimState& sim_state, BS::thread_poo
             for (int x = t * 40; x < (t + 1) * 40; x++) {
                 for (int y = 0; y < sim_state.height; y++) {
                     int index = sim_state.get_index({ x, y });
-                    if (sim_state.space.at(index).exists) {
+                    if (sim_state.space.at(index).type == ParticleType::e_salt) {
                         render_image.DrawPixel(x, y, rl::Color::FromHSV(0.0f, 0.0f, sim_state.space.at(index).shade));
+                    }
+                    else if (sim_state.space.at(index).type == ParticleType::e_water) {
+                        render_image.DrawPixel(x, y, rl::Color::FromHSV(243.0f, 0.9f, 1.0f));
                     }
                     else {
                         render_image.DrawPixel(x, y, rl::Color::Black());
@@ -193,7 +218,7 @@ void run()
 
     rl::Texture2D texture(render_image);
 
-    util::FixedLoop fixed_loop(120);
+    util::FixedLoop fixed_loop(240);
 
     BS::thread_pool pool;
 
@@ -204,7 +229,17 @@ void run()
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             rl::Vector2 mouse_pos = GetMousePosition();
             if (sim_state.in_space({ (int)mouse_pos.x, (int)mouse_pos.y })) {
-                sim_state.space.at(sim_state.get_index({ (int)mouse_pos.x, (int)mouse_pos.y })).exists = true;
+                sim_state.space.at(sim_state.get_index({ (int)mouse_pos.x, (int)mouse_pos.y })).type
+                    = ParticleType::e_salt;
+                sim_state.space.at(sim_state.get_index({ (int)mouse_pos.x, (int)mouse_pos.y })).shade
+                    = (float)GetRandomValue(750, 1000) / 1000.0f;
+            }
+        }
+        else if (IsMouseButtonDown(MOUSE_MIDDLE_BUTTON)) {
+            rl::Vector2 mouse_pos = GetMousePosition();
+            if (sim_state.in_space({ (int)mouse_pos.x, (int)mouse_pos.y })) {
+                sim_state.space.at(sim_state.get_index({ (int)mouse_pos.x, (int)mouse_pos.y })).type
+                    = ParticleType::e_water;
                 sim_state.space.at(sim_state.get_index({ (int)mouse_pos.x, (int)mouse_pos.y })).shade
                     = (float)GetRandomValue(750, 1000) / 1000.0f;
             }
@@ -212,7 +247,8 @@ void run()
         else if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
             rl::Vector2 mouse_pos = GetMousePosition();
             if (sim_state.in_space({ (int)mouse_pos.x, (int)mouse_pos.y })) {
-                sim_state.space.at(sim_state.get_index({ (int)mouse_pos.x, (int)mouse_pos.y })).exists = false;
+                sim_state.space.at(sim_state.get_index({ (int)mouse_pos.x, (int)mouse_pos.y })).type
+                    = ParticleType::e_null;
             }
         }
 
