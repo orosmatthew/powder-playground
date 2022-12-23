@@ -67,7 +67,9 @@ struct SimState {
 void update_salt(SimState& sim_state, Vector2i particle_pos)
 {
     Vector2i bottom_pos { particle_pos.x, particle_pos.y + 1 };
-    if (sim_state.in_space(bottom_pos) && sim_state.particle_at(bottom_pos).type == ParticleType::e_null) {
+    if (sim_state.in_space(bottom_pos)
+        && (sim_state.particle_at(bottom_pos).type == ParticleType::e_null
+            || sim_state.particle_at(bottom_pos).type == ParticleType::e_water)) {
         sim_state.swap(particle_pos, bottom_pos);
         return;
     }
@@ -77,7 +79,9 @@ void update_salt(SimState& sim_state, Vector2i particle_pos)
         rand_side = -1;
     }
     Vector2i side_pos { particle_pos.x + rand_side, particle_pos.y + 1 };
-    if (sim_state.in_space(side_pos) && sim_state.particle_at(side_pos).type == ParticleType::e_null) {
+    if (sim_state.in_space(side_pos)
+        && (sim_state.particle_at(side_pos).type == ParticleType::e_null
+            || sim_state.particle_at(side_pos).type == ParticleType::e_water)) {
         sim_state.swap(particle_pos, side_pos);
         return;
     }
