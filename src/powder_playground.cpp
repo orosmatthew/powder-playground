@@ -20,7 +20,6 @@ enum class ParticleType {
 
 struct Particle {
     ParticleType type = ParticleType::e_null;
-    bool modified = false;
     float shade = 1.0f;
 };
 
@@ -75,12 +74,8 @@ void update_sim(SimState& sim_state, std::mt19937& rand_engine)
 
     std::shuffle(rand_indices.begin(), rand_indices.end(), rand_engine);
 
-    for (Particle& p : sim_state.space) {
-        p.modified = false;
-    }
-
     for (int i : rand_indices) {
-        if (sim_state.space.at(i).modified || sim_state.space.at(i).type == ParticleType::e_null) {
+        if (sim_state.space.at(i).type == ParticleType::e_null) {
             continue;
         }
 
@@ -88,11 +83,10 @@ void update_sim(SimState& sim_state, std::mt19937& rand_engine)
 
         if (sim_state.in_space({ pos.x, pos.y + 1 })) {
             Vector2i bottom_pos { pos.x, pos.y + 1 };
-            if (sim_state.particle_at(bottom_pos).type == ParticleType::e_null
-                && !sim_state.particle_at(bottom_pos).modified) {
-                sim_state.swap(pos, bottom_pos);
-                sim_state.space.at(i).modified = true;
-                sim_state.particle_at(bottom_pos).modified = true;
+            if (sim_state.particle_at(bottom_pos).type == ParticleType::e_null) {
+                if (GetRandomValue(1, 2) == 1) {
+                    sim_state.swap(pos, bottom_pos);
+                }
                 continue;
             }
             else {
@@ -101,11 +95,8 @@ void update_sim(SimState& sim_state, std::mt19937& rand_engine)
                     val = -1;
                 }
                 Vector2i diag_pos { pos.x + val, pos.y + 1 };
-                if (sim_state.in_space(diag_pos) && sim_state.particle_at(diag_pos).type == ParticleType::e_null
-                    && !sim_state.particle_at(diag_pos).modified) {
+                if (sim_state.in_space(diag_pos) && sim_state.particle_at(diag_pos).type == ParticleType::e_null) {
                     sim_state.swap(pos, diag_pos);
-                    sim_state.space.at(i).modified = true;
-                    sim_state.particle_at(diag_pos).modified = true;
                     continue;
                 }
             }
@@ -117,11 +108,8 @@ void update_sim(SimState& sim_state, std::mt19937& rand_engine)
                 val = -1;
             }
             Vector2i side_pos { pos.x + val, pos.y };
-            if (sim_state.in_space(side_pos) && !sim_state.particle_at(side_pos).modified
-                && sim_state.particle_at(side_pos).type == ParticleType::e_null) {
+            if (sim_state.in_space(side_pos) && sim_state.particle_at(side_pos).type == ParticleType::e_null) {
                 sim_state.swap(pos, side_pos);
-                sim_state.space.at(i).modified = true;
-                sim_state.particle_at(side_pos).modified = true;
                 continue;
             }
         }
