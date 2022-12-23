@@ -95,10 +95,24 @@ void update_water(SimState& sim_state, Vector2i particle_pos)
         return;
     }
 
+    int sides[2];
     int rand_side = GetRandomValue(0, 1);
     if (rand_side == 0) {
-        rand_side = -1;
+        sides[0] = -1;
+        sides[1] = 1;
     }
+    else {
+        sides[0] = 1;
+        sides[1] = -1;
+    }
+    for (int side : sides) {
+        Vector2i side_below_pos { particle_pos.x + side, particle_pos.y };
+        if (sim_state.in_space(side_below_pos) && sim_state.particle_at(side_below_pos).type == ParticleType::e_null) {
+            sim_state.swap(particle_pos, side_below_pos);
+            return;
+        }
+    }
+
     Vector2i side_pos { particle_pos.x + rand_side, particle_pos.y };
     if (sim_state.in_space(side_pos) && sim_state.particle_at(side_pos).type == ParticleType::e_null) {
         sim_state.swap(particle_pos, side_pos);
