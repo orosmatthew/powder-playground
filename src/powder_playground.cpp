@@ -1,5 +1,6 @@
 #include "powder_playground.hpp"
 
+#include <cassert>
 #include <iostream>
 #include <random>
 
@@ -92,6 +93,8 @@ std::string to_string(ParticleType type)
         return "Salt";
     case ParticleType::e_water:
         return "Water";
+    default:
+        return "";
     }
 }
 
@@ -174,11 +177,11 @@ void update_sim(SimState& sim_state, std::mt19937& rand_engine)
 {
     std::vector<int> rand_indices;
     rand_indices.reserve(sim_state.width);
+    for (int i = 0; i < sim_state.width; i++) {
+        rand_indices.push_back(i);
+    }
+
     for (int y = sim_state.height - 1; y >= 0; y--) {
-        rand_indices.clear();
-        for (int i = 0; i < sim_state.width; i++) {
-            rand_indices.push_back(i);
-        }
         std::shuffle(rand_indices.begin(), rand_indices.end(), rand_engine);
         for (int x : rand_indices) {
             update_particle(sim_state, { x, y });
@@ -196,7 +199,7 @@ void draw_particle(rl::Image& render_image, const SimState& sim_state, Vector2i 
         render_image.DrawPixel(pos.x, pos.y, rl::Color::FromHSV(0.0f, 0.0f, sim_state.particle_at(pos).shade));
         break;
     case ParticleType::e_water:
-        render_image.DrawPixel(pos.x, pos.y, rl::Color::FromHSV(243.0f, 0.9f, sim_state.particle_at(pos).shade));
+        render_image.DrawPixel(pos.x, pos.y, rl::Color::FromHSV(243.0f, 0.9f, 1.0f));
         break;
     case ParticleType::e_wall:
         render_image.DrawPixel(pos.x, pos.y, rl::Color(120, 120, 120));
@@ -215,6 +218,8 @@ void draw_column(rl::Image& render_image, const SimState& sim_state, int start_c
 
 void draw_sim(rl::Image& render_image, const SimState& sim_state, BS::thread_pool& pool)
 {
+    assert(render_image.width == sim_state.width && render_image.height == sim_state.height);
+
     for (int col = 0; col < 8; col++) {
         pool.push_task([col, &sim_state, &render_image] {
             draw_column(render_image, sim_state, col, 40);
