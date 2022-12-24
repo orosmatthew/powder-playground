@@ -14,6 +14,7 @@ namespace pop {
 
 enum class ParticleType {
     e_null,
+    e_wall,
     e_salt,
     e_water,
 };
@@ -64,13 +65,45 @@ struct SimState {
     }
 };
 
+struct GameState {
+    int screen_width;
+    int screen_height;
+
+    SimState sim_state;
+
+    std::mt19937 rand_engine;
+    util::FixedLoop fixed_loop;
+    BS::thread_pool thread_pool;
+
+    ParticleType selected_type = ParticleType::e_salt;
+
+    rl::Image render_image;
+    rl::Texture2D sim_texture;
+};
+
+std::string to_string(ParticleType type)
+{
+    switch (type) {
+    case ParticleType::e_null:
+        return "Air";
+    case ParticleType::e_wall:
+        return "Wall";
+    case ParticleType::e_salt:
+        return "Salt";
+    case ParticleType::e_water:
+        return "Water";
+    }
+}
+
 void update_salt(SimState& sim_state, Vector2i particle_pos)
 {
     Vector2i bottom_pos { particle_pos.x, particle_pos.y + 1 };
     if (sim_state.in_bounds(bottom_pos)
         && (sim_state.particle_at(bottom_pos).type == ParticleType::e_null
             || sim_state.particle_at(bottom_pos).type == ParticleType::e_water)) {
-        sim_state.swap(particle_pos, bottom_pos);
+        if (GetRandomValue(0, 5) < 5) {
+            sim_state.swap(particle_pos, bottom_pos);
+        }
         return;
     }
 
@@ -91,7 +124,9 @@ void update_water(SimState& sim_state, Vector2i particle_pos)
 {
     Vector2i bottom_pos { particle_pos.x, particle_pos.y + 1 };
     if (sim_state.in_bounds(bottom_pos) && sim_state.particle_at(bottom_pos).type == ParticleType::e_null) {
-        sim_state.swap(particle_pos, bottom_pos);
+        if (GetRandomValue(0, 5) < 5) {
+            sim_state.swap(particle_pos, bottom_pos);
+        }
         return;
     }
 
@@ -130,6 +165,7 @@ void update_particle(SimState& sim_state, Vector2i particle_pos)
         update_water(sim_state, particle_pos);
         break;
     case ParticleType::e_null:
+    case ParticleType::e_wall:
         break;
     }
 }
@@ -137,15 +173,16 @@ void update_particle(SimState& sim_state, Vector2i particle_pos)
 void update_sim(SimState& sim_state, std::mt19937& rand_engine)
 {
     std::vector<int> rand_indices;
-    rand_indices.reserve(sim_state.space.size());
-    for (int i = 0; i < sim_state.space.size(); i++) {
-        rand_indices.push_back(i);
-    }
-
-    std::shuffle(rand_indices.begin(), rand_indices.end(), rand_engine);
-
-    for (int i : rand_indices) {
-        update_particle(sim_state, sim_state.pos_at(i));
+    rand_indices.reserve(sim_state.width);
+    for (int y = sim_state.height - 1; y >= 0; y--) {
+        rand_indices.clear();
+        for (int i = 0; i < sim_state.width; i++) {
+            rand_indices.push_back(i);
+        }
+        std::shuffle(rand_indices.begin(), rand_indices.end(), rand_engine);
+        for (int x : rand_indices) {
+            update_particle(sim_state, { x, y });
+        }
     }
 }
 
@@ -160,6 +197,9 @@ void draw_particle(rl::Image& render_image, const SimState& sim_state, Vector2i 
         break;
     case ParticleType::e_water:
         render_image.DrawPixel(pos.x, pos.y, rl::Color::FromHSV(243.0f, 0.9f, sim_state.particle_at(pos).shade));
+        break;
+    case ParticleType::e_wall:
+        render_image.DrawPixel(pos.x, pos.y, rl::Color(120, 120, 120));
         break;
     }
 }
@@ -183,30 +223,31 @@ void draw_sim(rl::Image& render_image, const SimState& sim_state, BS::thread_poo
     pool.wait_for_tasks();
 }
 
-void main_loop(
-    const int screen_width,
-    const int screen_height,
-    SimState& sim_state,
-    util::FixedLoop& fixed_loop,
-    rl::Image& render_image,
-    rl::Texture& sim_texture,
-    std::mt19937& rand_engine,
-    BS::thread_pool& thread_pool)
+void main_loop(GameState& game_state)
 {
+    SimState& sim_state = game_state.sim_state;
+
+    if (IsKeyPressed(KEY_ONE)) {
+        game_state.selected_type = ParticleType::e_null;
+    }
+    else if (IsKeyPressed(KEY_TWO)) {
+        game_state.selected_type = ParticleType::e_wall;
+    }
+    else if (IsKeyPressed(KEY_THREE)) {
+        game_state.selected_type = ParticleType::e_salt;
+    }
+    else if (IsKeyPressed(KEY_FOUR)) {
+        game_state.selected_type = ParticleType::e_water;
+    }
+
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         rl::Vector2 mouse_pos = GetMousePosition();
         Vector2i sim_pos { (int)mouse_pos.x, (int)mouse_pos.y };
         if (sim_state.in_bounds(sim_pos)) {
-            sim_state.particle_at(sim_pos).type = ParticleType::e_salt;
-            sim_state.particle_at(sim_pos).shade = (float)GetRandomValue(750, 1000) / 1000.0f;
-        }
-    }
-    else if (IsMouseButtonDown(MOUSE_MIDDLE_BUTTON)) {
-        rl::Vector2 mouse_pos = GetMousePosition();
-        Vector2i sim_pos { (int)mouse_pos.x, (int)mouse_pos.y };
-        if (sim_state.in_bounds({ (int)mouse_pos.x, (int)mouse_pos.y })) {
-            sim_state.particle_at(sim_pos).type = ParticleType::e_water;
-            sim_state.particle_at(sim_pos).shade = 1.0f;
+            sim_state.particle_at(sim_pos).type = game_state.selected_type;
+            if (game_state.selected_type == ParticleType::e_salt) {
+                sim_state.particle_at(sim_pos).shade = (float)GetRandomValue(750, 1000) / 1000.0f;
+            }
         }
     }
     else if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
@@ -217,23 +258,25 @@ void main_loop(
         }
     }
 
-    fixed_loop.update(20, [&]() {
-        update_sim(sim_state, rand_engine);
+    game_state.fixed_loop.update(20, [&]() {
+        update_sim(sim_state, game_state.rand_engine);
     });
 
-    draw_sim(render_image, sim_state, thread_pool);
+    draw_sim(game_state.render_image, sim_state, game_state.thread_pool);
 
-    sim_texture.Update(render_image.data);
+    game_state.sim_texture.Update(game_state.render_image.data);
 
     BeginDrawing();
     {
         ClearBackground(rl::Color(15, 15, 15));
 
-        sim_texture.Draw(
+        game_state.sim_texture.Draw(
             rl::Rectangle(0, 0, (float)sim_state.width, (float)sim_state.height),
-            rl::Rectangle(0, 0, (float)screen_width, (float)screen_height));
+            rl::Rectangle(0, 0, (float)game_state.screen_width, (float)game_state.screen_height));
 
         DrawFPS(10, 10);
+
+        rl::DrawText(to_string(game_state.selected_type), 10, 50, 20, rl::Color::Yellow());
     }
     EndDrawing();
 }
@@ -252,25 +295,28 @@ void run()
     for (int i = 0; i < sim_state.width * sim_state.height; i++) {
         sim_state.space.push_back({});
     }
-    rl::Image render_image = rl::Image(sim_state.width, sim_state.height);
 
-    for (int i = 0; i < sim_state.space.size(); i++) {
-        Vector2i pos = sim_state.pos_at(i);
-        render_image.DrawPixel(pos.x, pos.y, rl::Color(15, 15, 15));
+    GameState game_state {
+        .screen_width = screen_width,
+        .screen_height = screen_height,
+        .sim_state = std::move(sim_state),
+        .rand_engine {},
+        .fixed_loop { 240 },
+        .thread_pool {},
+        .selected_type = ParticleType::e_salt,
+        .render_image { game_state.sim_state.width, game_state.sim_state.height },
+        .sim_texture { game_state.render_image }
+    };
+
+    for (int i = 0; i < game_state.sim_state.space.size(); i++) {
+        Vector2i pos = game_state.sim_state.pos_at(i);
+        game_state.render_image.DrawPixel(pos.x, pos.y, rl::Color(15, 15, 15));
     }
 
     SetMouseScale(320.0f / 1200.0f, 320.0f / 1200.0f);
 
-    rl::Texture2D texture(render_image);
-
-    util::FixedLoop fixed_loop(240);
-
-    BS::thread_pool pool;
-
-    std::mt19937 rand_engine;
-
     while (!window.ShouldClose()) {
-        main_loop(screen_width, screen_height, sim_state, fixed_loop, render_image, texture, rand_engine, pool);
+        main_loop(game_state);
     }
 }
 
