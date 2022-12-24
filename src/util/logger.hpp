@@ -35,7 +35,7 @@ void init_logger();
 inline void logger_callback_raylib(int log_level, const char* text, va_list args)
 {
     char message[MAX_TRACELOG_MSG_LENGTH] = { 0 };
-    vsprintf_s(message, text, args);
+    vsnprintf(message, sizeof(message), text, args);
 
     switch (log_level) {
     case LOG_TRACE:
