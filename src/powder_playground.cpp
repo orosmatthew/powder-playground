@@ -7,7 +7,9 @@
 #include <BS_thread_pool.hpp>
 #include <raylib-cpp.hpp>
 
-#include "fixed_loop.hpp"
+#include "util/fixed_loop.hpp"
+#define LOGGER_RAYLIB
+#include "util/logger.hpp"
 
 namespace rl = raylib;
 
@@ -292,6 +294,7 @@ void run()
     const int screen_height = 900;
 
     //    SetConfigFlags(FLAG_VSYNC_HINT);
+    SetTraceLogCallback(util::logger_callback_raylib);
 
     rl::Window window(screen_width, screen_height, "Powder Playground");
 

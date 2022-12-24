@@ -10,11 +10,13 @@ add_subdirectory(lib/raylib-cpp-4.2.7)
 set(LIB_INCLUDES
         lib/raygui-3.2/include
         lib/thread-pool-3.3.0/include
+        lib/spdlog-1.11.0/include
         )
 
 set(SOURCE_FILES
         src/main.cpp
-        src/fixed_loop.cpp
+        src/util/fixed_loop.cpp
+        src/util/logger.cpp
         src/powder_playground.cpp
         )
 

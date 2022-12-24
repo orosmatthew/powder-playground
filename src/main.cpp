@@ -2,13 +2,17 @@
 
 #include "powder_playground.hpp"
 
+#include "util/logger.hpp"
+
 int main()
 {
+    util::init_logger();
+
     try {
         pop::run();
     }
     catch (std::exception& e) {
-        std::cerr << "[ERROR] " << e.what() << std::endl;
+        LOG->error(e.what());
         return EXIT_FAILURE;
     }
 
