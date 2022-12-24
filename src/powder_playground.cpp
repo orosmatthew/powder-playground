@@ -33,41 +33,41 @@ struct SimState {
     const int height;
     std::vector<Particle> space;
 
-    [[nodiscard]] inline int get_index(Vector2i pos) const
+    [[nodiscard]] inline int index_at(Vector2i pos) const
     {
         return width * pos.y + pos.x;
     }
 
-    [[nodiscard]] inline Vector2i get_pos(int i) const
+    [[nodiscard]] inline Vector2i pos_at(int i) const
     {
         return { i % width, i / width };
     }
 
-    [[nodiscard]] inline bool in_space(Vector2i pos) const
+    [[nodiscard]] inline bool in_bounds(Vector2i pos) const
     {
         return pos.x >= 0 && pos.x < width && pos.y >= 0 && pos.y < height;
     }
 
     [[nodiscard]] inline const Particle& particle_at(Vector2i pos) const
     {
-        return space.at(get_index(pos));
+        return space.at(index_at(pos));
     }
 
     [[nodiscard]] inline Particle& particle_at(Vector2i pos)
     {
-        return space.at(get_index(pos));
+        return space.at(index_at(pos));
     }
 
     inline void swap(Vector2i pos1, Vector2i pos2)
     {
-        std::swap(space.at(get_index(pos1)), space.at(get_index(pos2)));
+        std::swap(space.at(index_at(pos1)), space.at(index_at(pos2)));
     }
 };
 
 void update_salt(SimState& sim_state, Vector2i particle_pos)
 {
     Vector2i bottom_pos { particle_pos.x, particle_pos.y + 1 };
-    if (sim_state.in_space(bottom_pos)
+    if (sim_state.in_bounds(bottom_pos)
         && (sim_state.particle_at(bottom_pos).type == ParticleType::e_null
             || sim_state.particle_at(bottom_pos).type == ParticleType::e_water)) {
         sim_state.swap(particle_pos, bottom_pos);
@@ -79,7 +79,7 @@ void update_salt(SimState& sim_state, Vector2i particle_pos)
         rand_side = -1;
     }
     Vector2i side_pos { particle_pos.x + rand_side, particle_pos.y + 1 };
-    if (sim_state.in_space(side_pos)
+    if (sim_state.in_bounds(side_pos)
         && (sim_state.particle_at(side_pos).type == ParticleType::e_null
             || sim_state.particle_at(side_pos).type == ParticleType::e_water)) {
         sim_state.swap(particle_pos, side_pos);
@@ -90,7 +90,7 @@ void update_salt(SimState& sim_state, Vector2i particle_pos)
 void update_water(SimState& sim_state, Vector2i particle_pos)
 {
     Vector2i bottom_pos { particle_pos.x, particle_pos.y + 1 };
-    if (sim_state.in_space(bottom_pos) && sim_state.particle_at(bottom_pos).type == ParticleType::e_null) {
+    if (sim_state.in_bounds(bottom_pos) && sim_state.particle_at(bottom_pos).type == ParticleType::e_null) {
         sim_state.swap(particle_pos, bottom_pos);
         return;
     }
@@ -107,14 +107,14 @@ void update_water(SimState& sim_state, Vector2i particle_pos)
     }
     for (int side : sides) {
         Vector2i side_below_pos { particle_pos.x + side, particle_pos.y };
-        if (sim_state.in_space(side_below_pos) && sim_state.particle_at(side_below_pos).type == ParticleType::e_null) {
+        if (sim_state.in_bounds(side_below_pos) && sim_state.particle_at(side_below_pos).type == ParticleType::e_null) {
             sim_state.swap(particle_pos, side_below_pos);
             return;
         }
     }
 
     Vector2i side_pos { particle_pos.x + rand_side, particle_pos.y };
-    if (sim_state.in_space(side_pos) && sim_state.particle_at(side_pos).type == ParticleType::e_null) {
+    if (sim_state.in_bounds(side_pos) && sim_state.particle_at(side_pos).type == ParticleType::e_null) {
         sim_state.swap(particle_pos, side_pos);
         return;
     }
@@ -145,7 +145,7 @@ void update_sim(SimState& sim_state, std::mt19937& rand_engine)
     std::shuffle(rand_indices.begin(), rand_indices.end(), rand_engine);
 
     for (int i : rand_indices) {
-        update_particle(sim_state, sim_state.get_pos(i));
+        update_particle(sim_state, sim_state.pos_at(i));
     }
 }
 
@@ -153,7 +153,7 @@ void draw_particle(rl::Image& render_image, const SimState& sim_state, Vector2i 
 {
     switch (sim_state.particle_at(pos).type) {
     case ParticleType::e_null:
-        render_image.DrawPixel(pos.x, pos.y, rl::Color::Black());
+        render_image.DrawPixel(pos.x, pos.y, rl::Color(15, 15, 15));
         break;
     case ParticleType::e_salt:
         render_image.DrawPixel(pos.x, pos.y, rl::Color::FromHSV(0.0f, 0.0f, sim_state.particle_at(pos).shade));
@@ -196,7 +196,7 @@ void main_loop(
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         rl::Vector2 mouse_pos = GetMousePosition();
         Vector2i sim_pos { (int)mouse_pos.x, (int)mouse_pos.y };
-        if (sim_state.in_space(sim_pos)) {
+        if (sim_state.in_bounds(sim_pos)) {
             sim_state.particle_at(sim_pos).type = ParticleType::e_salt;
             sim_state.particle_at(sim_pos).shade = (float)GetRandomValue(750, 1000) / 1000.0f;
         }
@@ -204,7 +204,7 @@ void main_loop(
     else if (IsMouseButtonDown(MOUSE_MIDDLE_BUTTON)) {
         rl::Vector2 mouse_pos = GetMousePosition();
         Vector2i sim_pos { (int)mouse_pos.x, (int)mouse_pos.y };
-        if (sim_state.in_space({ (int)mouse_pos.x, (int)mouse_pos.y })) {
+        if (sim_state.in_bounds({ (int)mouse_pos.x, (int)mouse_pos.y })) {
             sim_state.particle_at(sim_pos).type = ParticleType::e_water;
             sim_state.particle_at(sim_pos).shade = 1.0f;
         }
@@ -212,7 +212,7 @@ void main_loop(
     else if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
         rl::Vector2 mouse_pos = GetMousePosition();
         Vector2i sim_pos { (int)mouse_pos.x, (int)mouse_pos.y };
-        if (sim_state.in_space(sim_pos)) {
+        if (sim_state.in_bounds(sim_pos)) {
             sim_state.particle_at(sim_pos).type = ParticleType::e_null;
         }
     }
@@ -227,7 +227,7 @@ void main_loop(
 
     BeginDrawing();
     {
-        ClearBackground(rl::Color::Black());
+        ClearBackground(rl::Color(15, 15, 15));
 
         sim_texture.Draw(
             rl::Rectangle(0, 0, (float)sim_state.width, (float)sim_state.height),
@@ -255,8 +255,8 @@ void run()
     rl::Image render_image = rl::Image(sim_state.width, sim_state.height);
 
     for (int i = 0; i < sim_state.space.size(); i++) {
-        Vector2i pos = sim_state.get_pos(i);
-        render_image.DrawPixel(pos.x, pos.y, rl::Color::Black());
+        Vector2i pos = sim_state.pos_at(i);
+        render_image.DrawPixel(pos.x, pos.y, rl::Color(15, 15, 15));
     }
 
     SetMouseScale(320.0f / 1200.0f, 320.0f / 1200.0f);
