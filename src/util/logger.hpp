@@ -4,11 +4,9 @@
 #if defined(_WIN32)
 #define NOGDI
 #define NOUSER
-#endif
 
 #include <Windows.h>
 
-#if defined(_WIN32)
 #undef near
 #undef far
 #endif
