@@ -11,6 +11,8 @@
 #undef far
 #endif
 
+#include <cstdio>
+
 #include <config.h>
 #include <raylib.h>
 #endif
