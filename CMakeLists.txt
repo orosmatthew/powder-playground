@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(powder_playground)
 
+set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory(lib/raylib-4.2.0)
