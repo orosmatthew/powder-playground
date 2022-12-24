@@ -309,7 +309,7 @@ void run()
         .screen_height = screen_height,
         .sim_state = std::move(sim_state),
         .rand_engine {},
-        .fixed_loop { 240 },
+        .fixed_loop = std::move(util::FixedLoop(240)),
         .thread_pool {},
         .selected_type = ParticleType::e_salt,
         .render_image { game_state.sim_state.width, game_state.sim_state.height },

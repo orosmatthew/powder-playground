@@ -35,9 +35,6 @@ public:
      */
     [[nodiscard]] float blend() const;
 
-    FixedLoop(FixedLoop const& other) = delete;
-    FixedLoop& operator=(FixedLoop const& other) = delete;
-
     /**
      * @brief Update loop and callback
      */
