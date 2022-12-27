@@ -74,7 +74,6 @@ struct GameState {
 
     SimState sim_state;
 
-    std::mt19937 rand_engine;
     util::FixedLoop fixed_loop;
     BS::thread_pool thread_pool;
 
@@ -97,6 +96,27 @@ std::string to_string(ParticleType type)
         return "Water";
     default:
         return "";
+    }
+}
+
+template <typename T>
+T pick_rand(std::vector<T>& vals)
+{
+    return vals.at(GetRandomValue(0, vals.size() - 1));
+}
+
+template <typename T>
+T pick_rand(std::vector<T> vals)
+{
+    return pick_rand(vals);
+}
+
+template <typename T>
+void simple_shuffle(std::vector<T>& vals)
+{
+    for (int i = vals.size() - 1; i > 0; i--) {
+        int rand_val = GetRandomValue(0, i);
+        std::swap(vals[i], vals[rand_val]);
     }
 }
 
@@ -144,16 +164,9 @@ void update_water(SimState& sim_state, Vector2i particle_pos)
         return;
     }
 
-    int sides[2];
-    int rand_side = GetRandomValue(0, 1);
-    if (rand_side == 0) {
-        sides[0] = -1;
-        sides[1] = 1;
-    }
-    else {
-        sides[0] = 1;
-        sides[1] = -1;
-    }
+    std::vector<int> sides = { -1, 1 };
+    simple_shuffle<int>(sides);
+
     for (int side : sides) {
         Vector2i side_below_pos { particle_pos.x + side, particle_pos.y + 1 };
         if (sim_state.in_bounds(side_below_pos) && sim_state.particle_at(side_below_pos).type == ParticleType::e_null) {
@@ -162,7 +175,7 @@ void update_water(SimState& sim_state, Vector2i particle_pos)
         }
     }
 
-    rand_side = sides[0];
+    int rand_side = sides.at(0);
 
     Vector2i side_pos { particle_pos.x + rand_side, particle_pos.y };
     if (sim_state.in_bounds(side_pos) && sim_state.particle_at(side_pos).type == ParticleType::e_null) {
@@ -186,7 +199,7 @@ void update_particle(SimState& sim_state, Vector2i particle_pos)
     }
 }
 
-void update_sim(SimState& sim_state, std::mt19937& rand_engine)
+void update_sim(SimState& sim_state)
 {
     std::vector<int> rand_indices;
     rand_indices.reserve(sim_state.width);
@@ -195,7 +208,7 @@ void update_sim(SimState& sim_state, std::mt19937& rand_engine)
     }
 
     for (int y = sim_state.height - 1; y >= 0; y--) {
-        std::shuffle(rand_indices.begin(), rand_indices.end(), rand_engine);
+        simple_shuffle(rand_indices);
         for (int x : rand_indices) {
             update_particle(sim_state, { x, y });
         }
@@ -277,7 +290,7 @@ void main_loop(GameState& game_state)
     }
 
     game_state.fixed_loop.update(20, [&]() {
-        update_sim(sim_state, game_state.rand_engine);
+        update_sim(sim_state);
     });
 
     draw_sim(game_state.render_image, sim_state, game_state.thread_pool);
@@ -319,7 +332,6 @@ void run()
         .screen_width = screen_width,
         .screen_height = screen_height,
         .sim_state = std::move(sim_state),
-        .rand_engine {},
         .fixed_loop = std::move(util::FixedLoop(240)),
         .thread_pool {},
         .selected_type = ParticleType::e_salt,
