@@ -103,13 +103,22 @@ std::string to_string(ParticleType type)
 void update_salt(SimState& sim_state, Vector2i particle_pos)
 {
     Vector2i bottom_pos { particle_pos.x, particle_pos.y + 1 };
-    if (sim_state.in_bounds(bottom_pos)
-        && (sim_state.particle_at(bottom_pos).type == ParticleType::e_null
-            || sim_state.particle_at(bottom_pos).type == ParticleType::e_water)) {
-        if (GetRandomValue(0, 5) < 5) {
-            sim_state.swap(particle_pos, bottom_pos);
+    if (sim_state.in_bounds(bottom_pos)) {
+        int rand_val;
+        if (sim_state.particle_at(bottom_pos).type == ParticleType::e_null) {
+            rand_val = GetRandomValue(0, 5);
+            if (rand_val <= 4) {
+                sim_state.swap(particle_pos, bottom_pos);
+            }
+            return;
         }
-        return;
+        if (sim_state.particle_at(bottom_pos).type == ParticleType::e_water) {
+            rand_val = GetRandomValue(0, 20);
+            if (rand_val < 5) {
+                sim_state.swap(particle_pos, bottom_pos);
+            }
+            return;
+        }
     }
 
     int rand_side = GetRandomValue(0, 1);
@@ -146,12 +155,14 @@ void update_water(SimState& sim_state, Vector2i particle_pos)
         sides[1] = -1;
     }
     for (int side : sides) {
-        Vector2i side_below_pos { particle_pos.x + side, particle_pos.y };
+        Vector2i side_below_pos { particle_pos.x + side, particle_pos.y + 1 };
         if (sim_state.in_bounds(side_below_pos) && sim_state.particle_at(side_below_pos).type == ParticleType::e_null) {
             sim_state.swap(particle_pos, side_below_pos);
             return;
         }
     }
+
+    rand_side = sides[0];
 
     Vector2i side_pos { particle_pos.x + rand_side, particle_pos.y };
     if (sim_state.in_bounds(side_pos) && sim_state.particle_at(side_pos).type == ParticleType::e_null) {
