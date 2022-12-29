@@ -1,6 +1,5 @@
 #include "powder_playground.hpp"
 
-#include <cassert>
 #include <iostream>
 #include <random>
 
@@ -9,64 +8,13 @@
 
 #include "util/fixed_loop.hpp"
 #define LOGGER_RAYLIB
+#include "common.hpp"
+#include "simulation.hpp"
 #include "util/logger.hpp"
 
 namespace rl = raylib;
 
 namespace pop {
-
-enum class ParticleType {
-    e_null,
-    e_wall,
-    e_salt,
-    e_water,
-};
-
-struct Particle {
-    ParticleType type = ParticleType::e_null;
-    float shade = 1.0f;
-};
-
-struct Vector2i {
-    int x;
-    int y;
-};
-
-struct SimState {
-    const int width;
-    const int height;
-    std::vector<Particle> space;
-
-    [[nodiscard]] inline int index_at(Vector2i pos) const
-    {
-        return width * pos.y + pos.x;
-    }
-
-    [[nodiscard]] inline Vector2i pos_at(int i) const
-    {
-        return { i % width, i / width };
-    }
-
-    [[nodiscard]] inline bool in_bounds(Vector2i pos) const
-    {
-        return pos.x >= 0 && pos.x < width && pos.y >= 0 && pos.y < height;
-    }
-
-    [[nodiscard]] inline const Particle& particle_at(Vector2i pos) const
-    {
-        return space.at(index_at(pos));
-    }
-
-    [[nodiscard]] inline Particle& particle_at(Vector2i pos)
-    {
-        return space.at(index_at(pos));
-    }
-
-    inline void swap(Vector2i pos1, Vector2i pos2)
-    {
-        std::swap(space.at(index_at(pos1)), space.at(index_at(pos2)));
-    }
-};
 
 struct GameState {
     int screen_width;
@@ -77,206 +25,48 @@ struct GameState {
     util::FixedLoop fixed_loop;
     BS::thread_pool thread_pool;
 
-    ParticleType selected_type = ParticleType::e_salt;
+    Element selected_type = Element::e_salt;
 
     rl::Image render_image;
+    rl::Image gas_image;
     rl::Texture2D sim_texture;
+    rl::Texture2D gas_texture;
+    rl::Shader blur_shader;
+    rl::RenderTexture2D render_texture;
 };
-
-std::string to_string(ParticleType type)
-{
-    switch (type) {
-    case ParticleType::e_null:
-        return "Air";
-    case ParticleType::e_wall:
-        return "Wall";
-    case ParticleType::e_salt:
-        return "Salt";
-    case ParticleType::e_water:
-        return "Water";
-    default:
-        return "";
-    }
-}
-
-template <typename T>
-T pick_rand(std::vector<T>& vals)
-{
-    return vals.at(GetRandomValue(0, vals.size() - 1));
-}
-
-template <typename T>
-T pick_rand(std::vector<T> vals)
-{
-    return pick_rand(vals);
-}
-
-template <typename T>
-void simple_shuffle(std::vector<T>& vals)
-{
-    for (int i = vals.size() - 1; i > 0; i--) {
-        int rand_val = GetRandomValue(0, i);
-        std::swap(vals[i], vals[rand_val]);
-    }
-}
-
-void update_salt(SimState& sim_state, Vector2i particle_pos)
-{
-    Vector2i bottom_pos { particle_pos.x, particle_pos.y + 1 };
-    if (sim_state.in_bounds(bottom_pos)) {
-        int rand_val;
-        if (sim_state.particle_at(bottom_pos).type == ParticleType::e_null) {
-            rand_val = GetRandomValue(0, 5);
-            if (rand_val <= 4) {
-                sim_state.swap(particle_pos, bottom_pos);
-            }
-            return;
-        }
-        if (sim_state.particle_at(bottom_pos).type == ParticleType::e_water) {
-            rand_val = GetRandomValue(0, 20);
-            if (rand_val < 5) {
-                sim_state.swap(particle_pos, bottom_pos);
-            }
-            return;
-        }
-    }
-
-    int rand_side = GetRandomValue(0, 1);
-    if (rand_side == 0) {
-        rand_side = -1;
-    }
-    Vector2i side_pos { particle_pos.x + rand_side, particle_pos.y + 1 };
-    if (sim_state.in_bounds(side_pos)
-        && (sim_state.particle_at(side_pos).type == ParticleType::e_null
-            || sim_state.particle_at(side_pos).type == ParticleType::e_water)) {
-        sim_state.swap(particle_pos, side_pos);
-        return;
-    }
-}
-
-void update_water(SimState& sim_state, Vector2i particle_pos)
-{
-    Vector2i bottom_pos { particle_pos.x, particle_pos.y + 1 };
-    if (sim_state.in_bounds(bottom_pos) && sim_state.particle_at(bottom_pos).type == ParticleType::e_null) {
-        if (GetRandomValue(0, 5) < 5) {
-            sim_state.swap(particle_pos, bottom_pos);
-        }
-        return;
-    }
-
-    std::vector<int> sides = { -1, 1 };
-    simple_shuffle<int>(sides);
-
-    for (int side : sides) {
-        Vector2i side_below_pos { particle_pos.x + side, particle_pos.y + 1 };
-        if (sim_state.in_bounds(side_below_pos) && sim_state.particle_at(side_below_pos).type == ParticleType::e_null) {
-            sim_state.swap(particle_pos, side_below_pos);
-            return;
-        }
-    }
-
-    int rand_side = sides.at(0);
-
-    Vector2i side_pos { particle_pos.x + rand_side, particle_pos.y };
-    if (sim_state.in_bounds(side_pos) && sim_state.particle_at(side_pos).type == ParticleType::e_null) {
-        sim_state.swap(particle_pos, side_pos);
-        return;
-    }
-}
-
-void update_particle(SimState& sim_state, Vector2i particle_pos)
-{
-    switch (sim_state.particle_at(particle_pos).type) {
-    case ParticleType::e_salt:
-        update_salt(sim_state, particle_pos);
-        break;
-    case ParticleType::e_water:
-        update_water(sim_state, particle_pos);
-        break;
-    case ParticleType::e_null:
-    case ParticleType::e_wall:
-        break;
-    }
-}
-
-void update_sim(SimState& sim_state)
-{
-    std::vector<int> rand_indices;
-    rand_indices.reserve(sim_state.width);
-    for (int i = 0; i < sim_state.width; i++) {
-        rand_indices.push_back(i);
-    }
-
-    for (int y = sim_state.height - 1; y >= 0; y--) {
-        simple_shuffle(rand_indices);
-        for (int x : rand_indices) {
-            update_particle(sim_state, { x, y });
-        }
-    }
-}
-
-void draw_particle(rl::Image& render_image, const SimState& sim_state, Vector2i pos)
-{
-    switch (sim_state.particle_at(pos).type) {
-    case ParticleType::e_null:
-        render_image.DrawPixel(pos.x, pos.y, rl::Color(15, 15, 15));
-        break;
-    case ParticleType::e_salt:
-        render_image.DrawPixel(pos.x, pos.y, rl::Color::FromHSV(0.0f, 0.0f, sim_state.particle_at(pos).shade));
-        break;
-    case ParticleType::e_water:
-        render_image.DrawPixel(pos.x, pos.y, rl::Color::FromHSV(243.0f, 0.9f, 1.0f));
-        break;
-    case ParticleType::e_wall:
-        render_image.DrawPixel(pos.x, pos.y, rl::Color(120, 120, 120));
-        break;
-    }
-}
-
-void draw_column(rl::Image& render_image, const SimState& sim_state, int start_col, int col_width)
-{
-    for (int x = start_col * col_width; x < (start_col + 1) * col_width; x++) {
-        for (int y = 0; y < sim_state.height; y++) {
-            draw_particle(render_image, sim_state, { x, y });
-        }
-    }
-}
-
-void draw_sim(rl::Image& render_image, const SimState& sim_state, BS::thread_pool& pool)
-{
-    assert(render_image.width == sim_state.width && render_image.height == sim_state.height);
-
-    for (int col = 0; col < 8; col++) {
-        pool.push_task([col, &sim_state, &render_image] {
-            draw_column(render_image, sim_state, col, 40);
-        });
-    }
-    pool.wait_for_tasks();
-}
 
 void main_loop(GameState& game_state)
 {
     SimState& sim_state = game_state.sim_state;
 
     if (IsKeyPressed(KEY_ONE)) {
-        game_state.selected_type = ParticleType::e_null;
+        game_state.selected_type = Element::e_null;
     }
     else if (IsKeyPressed(KEY_TWO)) {
-        game_state.selected_type = ParticleType::e_wall;
+        game_state.selected_type = Element::e_wall;
     }
     else if (IsKeyPressed(KEY_THREE)) {
-        game_state.selected_type = ParticleType::e_salt;
+        game_state.selected_type = Element::e_salt;
     }
     else if (IsKeyPressed(KEY_FOUR)) {
-        game_state.selected_type = ParticleType::e_water;
+        game_state.selected_type = Element::e_water;
+    }
+    else if (IsKeyPressed(KEY_FIVE)) {
+        game_state.selected_type = Element::e_lava;
+    }
+    else if (IsKeyPressed(KEY_SIX)) {
+        game_state.selected_type = Element::e_steam;
+    }
+    else if (IsKeyPressed(KEY_SEVEN)) {
+        game_state.selected_type = Element::e_stone;
     }
 
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         rl::Vector2 mouse_pos = GetMousePosition();
         Vector2i sim_pos { (int)mouse_pos.x, (int)mouse_pos.y };
         if (sim_state.in_bounds(sim_pos)) {
-            sim_state.particle_at(sim_pos).type = game_state.selected_type;
-            if (game_state.selected_type == ParticleType::e_salt) {
+            sim_state.particle_at(sim_pos).element = game_state.selected_type;
+            if (game_state.selected_type == Element::e_salt) {
                 sim_state.particle_at(sim_pos).shade = (float)GetRandomValue(750, 1000) / 1000.0f;
             }
         }
@@ -285,7 +75,7 @@ void main_loop(GameState& game_state)
         rl::Vector2 mouse_pos = GetMousePosition();
         Vector2i sim_pos { (int)mouse_pos.x, (int)mouse_pos.y };
         if (sim_state.in_bounds(sim_pos)) {
-            sim_state.particle_at(sim_pos).type = ParticleType::e_null;
+            sim_state.particle_at(sim_pos).element = Element::e_null;
         }
     }
 
@@ -293,17 +83,33 @@ void main_loop(GameState& game_state)
         update_sim(sim_state);
     });
 
-    draw_sim(game_state.render_image, sim_state, game_state.thread_pool);
+    draw_sim(game_state.render_image, game_state.gas_image, sim_state, game_state.thread_pool);
 
     game_state.sim_texture.Update(game_state.render_image.data);
+    game_state.gas_texture.Update(game_state.gas_image.data);
 
     BeginDrawing();
     {
         ClearBackground(rl::Color(15, 15, 15));
 
+        //        game_state.blur_shader.BeginMode();
         game_state.sim_texture.Draw(
             rl::Rectangle(0, 0, (float)sim_state.width, (float)sim_state.height),
             rl::Rectangle(0, 0, (float)game_state.screen_width, (float)game_state.screen_height));
+        //        game_state.blur_shader.EndMode();
+
+        game_state.render_texture.BeginMode();
+        ClearBackground(rl::Color().Alpha(0));
+
+        game_state.gas_texture.Draw(
+            rl::Rectangle(0, 0, (float)sim_state.width, (float)sim_state.height),
+            rl::Rectangle(0, 0, (float)game_state.screen_width, (float)game_state.screen_height));
+
+        game_state.render_texture.EndMode();
+
+        game_state.blur_shader.BeginMode();
+        game_state.render_texture.GetTexture().Draw();
+        game_state.blur_shader.EndMode();
 
         DrawFPS(10, 10);
 
@@ -317,7 +123,7 @@ void run()
     const int screen_width = 1200;
     const int screen_height = 900;
 
-    //    SetConfigFlags(FLAG_VSYNC_HINT);
+//    SetConfigFlags(FLAG_VSYNC_HINT);
     SetTraceLogCallback(util::logger_callback_raylib);
 
     rl::Window window(screen_width, screen_height, "Powder Playground");
@@ -334,10 +140,20 @@ void run()
         .sim_state = std::move(sim_state),
         .fixed_loop = std::move(util::FixedLoop(240)),
         .thread_pool {},
-        .selected_type = ParticleType::e_salt,
+        .selected_type = Element::e_salt,
         .render_image { game_state.sim_state.width, game_state.sim_state.height },
-        .sim_texture { game_state.render_image }
+        .gas_image { game_state.sim_state.width, game_state.sim_state.height },
+        .sim_texture { game_state.render_image },
+        .gas_texture { game_state.gas_image },
+        .blur_shader { nullptr, "../res/blur.frag" },
+        .render_texture { 1200, 900 },
     };
+
+    game_state.render_texture.GetTexture().SetWrap(TEXTURE_WRAP_CLAMP);
+
+    Vector3 resolution { 1200, 900, 0 };
+    game_state.blur_shader.SetValue(
+        game_state.blur_shader.GetLocation("u_resolution"), &resolution, SHADER_UNIFORM_VEC3);
 
     for (int i = 0; i < game_state.sim_state.space.size(); i++) {
         Vector2i pos = game_state.sim_state.pos_at(i);

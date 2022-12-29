@@ -19,6 +19,8 @@ set(SOURCE_FILES
         src/util/fixed_loop.cpp
         src/util/logger.cpp
         src/powder_playground.cpp
+        src/elements.cpp
+        src/simulation.cpp
         )
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
