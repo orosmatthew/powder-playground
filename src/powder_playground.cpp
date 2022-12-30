@@ -1,6 +1,5 @@
 #include "powder_playground.hpp"
 
-#include <iostream>
 #include <random>
 
 #include <BS_thread_pool.hpp>
@@ -123,7 +122,7 @@ void run()
     const int screen_width = 1200;
     const int screen_height = 900;
 
-//    SetConfigFlags(FLAG_VSYNC_HINT);
+    //    SetConfigFlags(FLAG_VSYNC_HINT);
     SetTraceLogCallback(util::logger_callback_raylib);
 
     rl::Window window(screen_width, screen_height, "Powder Playground");
@@ -134,11 +133,12 @@ void run()
         sim_state.space.push_back({});
     }
 
+    LOG->set_level(spdlog::level::err);
     GameState game_state {
         .screen_width = screen_width,
         .screen_height = screen_height,
-        .sim_state = std::move(sim_state),
-        .fixed_loop = std::move(util::FixedLoop(240)),
+        .sim_state = sim_state,
+        .fixed_loop = util::FixedLoop(240),
         .thread_pool {},
         .selected_type = Element::e_salt,
         .render_image { game_state.sim_state.width, game_state.sim_state.height },
@@ -148,12 +148,13 @@ void run()
         .blur_shader { nullptr, "../res/blur.frag" },
         .render_texture { 1200, 900 },
     };
+    LOG->set_level(spdlog::level::info);
 
     game_state.render_texture.GetTexture().SetWrap(TEXTURE_WRAP_CLAMP);
 
-    Vector3 resolution { 1200, 900, 0 };
+    const rl::Vector2 blur_shader_resolution { screen_width, screen_height };
     game_state.blur_shader.SetValue(
-        game_state.blur_shader.GetLocation("u_resolution"), &resolution, SHADER_UNIFORM_VEC3);
+        game_state.blur_shader.GetLocation("resolution"), &blur_shader_resolution, SHADER_UNIFORM_VEC2);
 
     for (int i = 0; i < game_state.sim_state.space.size(); i++) {
         Vector2i pos = game_state.sim_state.pos_at(i);

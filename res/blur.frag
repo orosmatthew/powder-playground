@@ -1,17 +1,14 @@
 #version 330
 
-// Input vertex attributes (from vertex shader)
 in vec2 fragTexCoord;
 in vec4 fragColor;
 
-// Input uniform values
+out vec4 finalColor;
+
 uniform sampler2D texture0;
 uniform vec4 colDiffuse;
 
-// Output fragment color
-out vec4 finalColor;
-
-uniform vec3 u_resolution;
+uniform vec2 resolution;
 
 void main() {
     float pi = 3.14159265358979323846;
@@ -20,9 +17,7 @@ void main() {
     float quality = 3.0;
     float size = 6.0;
 
-    vec2 res = vec2(1200, 900);
-
-    vec2 radius = size / res;
+    vec2 radius = size / resolution;
 
     vec2 uv = vec2(fragTexCoord.x, 1 - fragTexCoord.y);
 
