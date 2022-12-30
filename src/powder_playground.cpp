@@ -39,7 +39,7 @@ void main_loop(GameState& game_state)
     SimState& sim_state = game_state.sim_state;
 
     if (IsKeyPressed(KEY_ONE)) {
-        game_state.selected_type = Element::e_null;
+        game_state.selected_type = Element::e_air;
     }
     else if (IsKeyPressed(KEY_TWO)) {
         game_state.selected_type = Element::e_wall;
@@ -74,7 +74,7 @@ void main_loop(GameState& game_state)
         rl::Vector2 mouse_pos = GetMousePosition();
         Vector2i sim_pos { (int)mouse_pos.x, (int)mouse_pos.y };
         if (sim_state.in_bounds(sim_pos)) {
-            sim_state.particle_at(sim_pos).element = Element::e_null;
+            sim_state.particle_at(sim_pos).element = Element::e_air;
         }
     }
 

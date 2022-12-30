@@ -17,7 +17,7 @@ enum class ElementType {
 };
 
 enum class Element {
-    e_null,
+    e_air,
     e_wall,
     e_salt,
     e_water,

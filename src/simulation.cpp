@@ -20,7 +20,7 @@ void update_particle(pop::SimState& sim_state, Vector2i particle_pos)
     case Element::e_stone:
         update_stone(sim_state, particle_pos);
         break;
-    case Element::e_null:
+    case Element::e_air:
     case Element::e_wall:
         break;
     case Element::e_lava:
@@ -51,7 +51,7 @@ void update_sim(SimState& sim_state)
 void draw_particle(rl::Image& render_image, const SimState& sim_state, Vector2i pos)
 {
     switch (sim_state.particle_at(pos).element) {
-    case Element::e_null:
+    case Element::e_air:
         render_image.DrawPixel(pos.x, pos.y, rl::Color(15, 15, 15));
         break;
     case Element::e_salt:

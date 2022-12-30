@@ -12,7 +12,7 @@
 namespace pop {
 
 struct Particle {
-    Element element = Element::e_null;
+    Element element = Element::e_air;
     float shade = 1.0f;
 };
 

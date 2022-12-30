@@ -10,7 +10,7 @@ void update_salt(SimState& sim_state, Vector2i particle_pos)
     Vector2i bottom_pos { particle_pos.x, particle_pos.y + 1 };
     if (sim_state.in_bounds(bottom_pos)) {
         int rand_val;
-        if (sim_state.particle_at(bottom_pos).element == Element::e_null) {
+        if (sim_state.particle_at(bottom_pos).element == Element::e_air) {
             rand_val = GetRandomValue(0, 5);
             if (rand_val <= 4) {
                 sim_state.swap(particle_pos, bottom_pos);
@@ -32,7 +32,7 @@ void update_salt(SimState& sim_state, Vector2i particle_pos)
     }
     Vector2i side_pos { particle_pos.x + rand_side, particle_pos.y + 1 };
     if (sim_state.in_bounds(side_pos)
-        && (sim_state.particle_at(side_pos).element == Element::e_null
+        && (sim_state.particle_at(side_pos).element == Element::e_air
             || type_of(sim_state.particle_at(side_pos).element) == ElementType::e_liquid)) {
         sim_state.swap(particle_pos, side_pos);
         return;
@@ -57,7 +57,7 @@ void update_water(SimState& sim_state, Vector2i particle_pos)
     }
 
     Vector2i bottom_pos { particle_pos.x, particle_pos.y + 1 };
-    if (sim_state.in_bounds(bottom_pos) && sim_state.particle_at(bottom_pos).element == Element::e_null) {
+    if (sim_state.in_bounds(bottom_pos) && sim_state.particle_at(bottom_pos).element == Element::e_air) {
         if (GetRandomValue(0, 5) < 5) {
             sim_state.swap(particle_pos, bottom_pos);
         }
@@ -69,7 +69,7 @@ void update_water(SimState& sim_state, Vector2i particle_pos)
 
     for (int side : sides) {
         Vector2i side_below_pos { particle_pos.x + side, particle_pos.y + 1 };
-        if (sim_state.in_bounds(side_below_pos) && sim_state.particle_at(side_below_pos).element == Element::e_null) {
+        if (sim_state.in_bounds(side_below_pos) && sim_state.particle_at(side_below_pos).element == Element::e_air) {
             sim_state.swap(particle_pos, side_below_pos);
             return;
         }
@@ -78,7 +78,7 @@ void update_water(SimState& sim_state, Vector2i particle_pos)
     int rand_side = sides.at(0);
 
     Vector2i side_pos { particle_pos.x + rand_side, particle_pos.y };
-    if (sim_state.in_bounds(side_pos) && sim_state.particle_at(side_pos).element == Element::e_null) {
+    if (sim_state.in_bounds(side_pos) && sim_state.particle_at(side_pos).element == Element::e_air) {
         sim_state.swap(particle_pos, side_pos);
         return;
     }
@@ -102,7 +102,7 @@ void update_lava(SimState& sim_state, Vector2i particle_pos)
     }
 
     Vector2i bottom_pos { particle_pos.x, particle_pos.y + 1 };
-    if (sim_state.in_bounds(bottom_pos) && sim_state.particle_at(bottom_pos).element == Element::e_null) {
+    if (sim_state.in_bounds(bottom_pos) && sim_state.particle_at(bottom_pos).element == Element::e_air) {
         if (GetRandomValue(0, 5) < 5) {
             sim_state.swap(particle_pos, bottom_pos);
         }
@@ -114,7 +114,7 @@ void update_lava(SimState& sim_state, Vector2i particle_pos)
 
     for (int side : sides) {
         Vector2i side_below_pos { particle_pos.x + side, particle_pos.y + 1 };
-        if (sim_state.in_bounds(side_below_pos) && sim_state.particle_at(side_below_pos).element == Element::e_null) {
+        if (sim_state.in_bounds(side_below_pos) && sim_state.particle_at(side_below_pos).element == Element::e_air) {
             sim_state.swap(particle_pos, side_below_pos);
             return;
         }
@@ -123,7 +123,7 @@ void update_lava(SimState& sim_state, Vector2i particle_pos)
     int rand_side = sides.at(0);
 
     Vector2i side_pos { particle_pos.x + rand_side, particle_pos.y };
-    if (sim_state.in_bounds(side_pos) && sim_state.particle_at(side_pos).element == Element::e_null) {
+    if (sim_state.in_bounds(side_pos) && sim_state.particle_at(side_pos).element == Element::e_air) {
         sim_state.swap(particle_pos, side_pos);
         return;
     }
@@ -152,7 +152,7 @@ void update_steam(SimState& sim_state, Vector2i particle_pos)
         }
     }
 
-    if (p.element == Element::e_null) {
+    if (p.element == Element::e_air) {
         if (GetRandomValue(0, 4) < 1) {
             sim_state.swap(particle_pos, rand_pos);
         }
@@ -163,7 +163,7 @@ void update_steam(SimState& sim_state, Vector2i particle_pos)
 std::string to_string(Element type)
 {
     switch (type) {
-    case Element::e_null:
+    case Element::e_air:
         return "Air";
     case Element::e_wall:
         return "Wall";
@@ -187,7 +187,7 @@ void update_stone(SimState& sim_state, Vector2i particle_pos)
     Vector2i bottom_pos { particle_pos.x, particle_pos.y + 1 };
     if (sim_state.in_bounds(bottom_pos)) {
         int rand_val;
-        if (sim_state.particle_at(bottom_pos).element == Element::e_null) {
+        if (sim_state.particle_at(bottom_pos).element == Element::e_air) {
             rand_val = GetRandomValue(0, 5);
             if (rand_val <= 4) {
                 sim_state.swap(particle_pos, bottom_pos);
@@ -210,7 +210,7 @@ void update_stone(SimState& sim_state, Vector2i particle_pos)
     }
     Vector2i side_pos { particle_pos.x + rand_side, particle_pos.y + 1 };
     if (sim_state.in_bounds(side_pos)
-        && (sim_state.particle_at(side_pos).element == Element::e_null
+        && (sim_state.particle_at(side_pos).element == Element::e_air
             || sim_state.particle_at(side_pos).element == Element::e_water)) {
         sim_state.swap(particle_pos, side_pos);
         return;
@@ -220,7 +220,7 @@ void update_stone(SimState& sim_state, Vector2i particle_pos)
 ElementType type_of(Element element)
 {
     switch (element) {
-    case Element::e_null:
+    case Element::e_air:
         return ElementType::e_null;
     case Element::e_wall:
         return ElementType::e_solid;
