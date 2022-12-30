@@ -17,8 +17,7 @@ void update_salt(SimState& sim_state, Vector2i particle_pos)
             }
             return;
         }
-        if (sim_state.particle_at(bottom_pos).element == Element::e_water
-            || sim_state.particle_at(bottom_pos).element == Element::e_lava) {
+        if (type_of(sim_state.particle_at(bottom_pos).element) == ElementType::e_liquid) {
             rand_val = GetRandomValue(0, 20);
             if (rand_val < 5) {
                 sim_state.swap(particle_pos, bottom_pos);
@@ -34,7 +33,7 @@ void update_salt(SimState& sim_state, Vector2i particle_pos)
     Vector2i side_pos { particle_pos.x + rand_side, particle_pos.y + 1 };
     if (sim_state.in_bounds(side_pos)
         && (sim_state.particle_at(side_pos).element == Element::e_null
-            || sim_state.particle_at(side_pos).element == Element::e_water)) {
+            || type_of(sim_state.particle_at(side_pos).element) == ElementType::e_liquid)) {
         sim_state.swap(particle_pos, side_pos);
         return;
     }
@@ -146,7 +145,7 @@ void update_steam(SimState& sim_state, Vector2i particle_pos)
 
     Particle& p = sim_state.particle_at(rand_pos);
 
-    if (p.element == Element::e_water || p.element == Element::e_lava) {
+    if (type_of(p.element) == ElementType::e_liquid) {
         if (rand_rel.y != 0 && rand_rel.y != 1) {
             sim_state.swap(particle_pos, rand_pos);
             return;
@@ -215,6 +214,28 @@ void update_stone(SimState& sim_state, Vector2i particle_pos)
             || sim_state.particle_at(side_pos).element == Element::e_water)) {
         sim_state.swap(particle_pos, side_pos);
         return;
+    }
+}
+
+ElementType type_of(Element element)
+{
+    switch (element) {
+    case Element::e_null:
+        return ElementType::e_null;
+    case Element::e_wall:
+        return ElementType::e_solid;
+    case Element::e_salt:
+        return ElementType::e_powder;
+    case Element::e_water:
+        return ElementType::e_liquid;
+    case Element::e_lava:
+        return ElementType::e_liquid;
+    case Element::e_steam:
+        return ElementType::e_gas;
+    case Element::e_stone:
+        return ElementType::e_powder;
+    default:
+        return ElementType::e_null;
     }
 }
 

@@ -8,6 +8,14 @@ namespace pop {
 
 class SimState;
 
+enum class ElementType {
+    e_null,
+    e_powder,
+    e_solid,
+    e_liquid,
+    e_gas,
+};
+
 enum class Element {
     e_null,
     e_wall,
@@ -19,6 +27,8 @@ enum class Element {
 };
 
 std::string to_string(Element type);
+
+ElementType type_of(Element element);
 
 void update_salt(SimState& sim_state, Vector2i particle_pos);
 
