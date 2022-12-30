@@ -152,7 +152,7 @@ void update_steam(SimState& sim_state, Vector2i particle_pos)
         }
     }
 
-    if (p.element == Element::e_air) {
+    if (p.element == Element::e_air || type_of(p.element) == ElementType::e_gas) {
         if (GetRandomValue(0, 4) < 1) {
             sim_state.swap(particle_pos, rand_pos);
         }
@@ -177,6 +177,8 @@ std::string to_string(Element type)
         return "Steam";
     case Element::e_stone:
         return "Stone";
+    case Element::e_toxic_gas:
+        return "Toxic Gas";
     default:
         return "";
     }
@@ -234,9 +236,16 @@ ElementType type_of(Element element)
         return ElementType::e_gas;
     case Element::e_stone:
         return ElementType::e_powder;
+    case Element::e_toxic_gas:
+        return ElementType::e_gas;
     default:
         return ElementType::e_null;
     }
+}
+
+void update_toxic_gas(SimState& sim_state, Vector2i particle_pos)
+{
+    update_steam(sim_state, particle_pos);
 }
 
 }

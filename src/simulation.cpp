@@ -29,6 +29,9 @@ void update_particle(pop::SimState& sim_state, Vector2i particle_pos)
     case Element::e_steam:
         update_steam(sim_state, particle_pos);
         break;
+    case Element::e_toxic_gas:
+        update_toxic_gas(sim_state, particle_pos);
+        break;
     }
 }
 
@@ -72,6 +75,9 @@ void draw_particle(rl::Image& render_image, const SimState& sim_state, Vector2i 
     case Element::e_stone:
         render_image.DrawPixel(pos.x, pos.y, rl::Color(140, 140, 140));
         break;
+    case Element::e_toxic_gas:
+        render_image.DrawPixel(pos.x, pos.y, rl::Color(165, 185, 0));
+        break;
     }
 }
 
@@ -79,7 +85,7 @@ void draw_column(rl::Image& render_image, rl::Image& gas_image, const SimState& 
 {
     for (int x = start_col * col_width; x < (start_col + 1) * col_width; x++) {
         for (int y = 0; y < sim_state.height; y++) {
-            if (sim_state.particle_at({ x, y }).element == Element::e_steam) {
+            if (type_of(sim_state.particle_at({ x, y }).element) == ElementType::e_gas) {
                 draw_particle(gas_image, sim_state, { x, y });
             }
             else {

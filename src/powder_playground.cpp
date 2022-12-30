@@ -59,6 +59,9 @@ void main_loop(GameState& game_state)
     else if (IsKeyPressed(KEY_SEVEN)) {
         game_state.selected_type = Element::e_stone;
     }
+    else if (IsKeyPressed(KEY_EIGHT)) {
+        game_state.selected_type = Element::e_toxic_gas;
+    }
 
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         rl::Vector2 mouse_pos = GetMousePosition();

@@ -24,6 +24,7 @@ enum class Element {
     e_lava,
     e_steam,
     e_stone,
+    e_toxic_gas,
 };
 
 std::string to_string(Element type);
@@ -39,5 +40,7 @@ void update_lava(SimState& sim_state, Vector2i particle_pos);
 void update_steam(SimState& sim_state, Vector2i particle_pos);
 
 void update_stone(SimState& sim_state, Vector2i particle_pos);
+
+void update_toxic_gas(SimState& sim_state, Vector2i particle_pos);
 
 }
