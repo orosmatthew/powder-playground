@@ -26,12 +26,12 @@ struct GameState {
 
     Element selected_type = Element::e_salt;
 
-    rl::Image render_image;
+    rl::Image powder_image;
     rl::Image gas_image;
-    rl::Texture2D sim_texture;
+    rl::Texture2D powder_texture;
     rl::Texture2D gas_texture;
     rl::Shader blur_shader;
-    rl::RenderTexture2D render_texture;
+    rl::RenderTexture2D gas_render_texture;
 };
 
 void main_loop(GameState& game_state)
@@ -82,32 +82,31 @@ void main_loop(GameState& game_state)
         update_sim(sim_state);
     });
 
-    draw_sim(game_state.render_image, game_state.gas_image, sim_state, game_state.thread_pool);
+    game_state.powder_image.ClearBackground(rl::Color().Alpha(0));
+    game_state.gas_image.ClearBackground(rl::Color().Alpha(0));
 
-    game_state.sim_texture.Update(game_state.render_image.data);
+    draw_sim(game_state.powder_image, game_state.gas_image, sim_state, game_state.thread_pool);
+
+    game_state.powder_texture.Update(game_state.powder_image.data);
     game_state.gas_texture.Update(game_state.gas_image.data);
 
     BeginDrawing();
     {
         ClearBackground(rl::Color(15, 15, 15));
 
-        //        game_state.blur_shader.BeginMode();
-        game_state.sim_texture.Draw(
+        game_state.powder_texture.Draw(
             rl::Rectangle(0, 0, (float)sim_state.width, (float)sim_state.height),
             rl::Rectangle(0, 0, (float)game_state.screen_width, (float)game_state.screen_height));
-        //        game_state.blur_shader.EndMode();
 
-        game_state.render_texture.BeginMode();
+        game_state.gas_render_texture.BeginMode();
         ClearBackground(rl::Color().Alpha(0));
-
         game_state.gas_texture.Draw(
             rl::Rectangle(0, 0, (float)sim_state.width, (float)sim_state.height),
             rl::Rectangle(0, 0, (float)game_state.screen_width, (float)game_state.screen_height));
-
-        game_state.render_texture.EndMode();
+        game_state.gas_render_texture.EndMode();
 
         game_state.blur_shader.BeginMode();
-        game_state.render_texture.GetTexture().Draw();
+        game_state.gas_render_texture.GetTexture().Draw();
         game_state.blur_shader.EndMode();
 
         DrawFPS(10, 10);
@@ -141,16 +140,16 @@ void run()
         .fixed_loop = util::FixedLoop(240),
         .thread_pool {},
         .selected_type = Element::e_salt,
-        .render_image { game_state.sim_state.width, game_state.sim_state.height },
+        .powder_image { game_state.sim_state.width, game_state.sim_state.height },
         .gas_image { game_state.sim_state.width, game_state.sim_state.height },
-        .sim_texture { game_state.render_image },
+        .powder_texture { game_state.powder_image },
         .gas_texture { game_state.gas_image },
         .blur_shader { nullptr, "../res/blur.frag" },
-        .render_texture { 1200, 900 },
+        .gas_render_texture { 1200, 900 },
     };
     LOG->set_level(spdlog::level::info);
 
-    game_state.render_texture.GetTexture().SetWrap(TEXTURE_WRAP_CLAMP);
+    game_state.gas_render_texture.GetTexture().SetWrap(TEXTURE_WRAP_CLAMP);
 
     const rl::Vector2 blur_shader_resolution { screen_width, screen_height };
     game_state.blur_shader.SetValue(
@@ -158,7 +157,7 @@ void run()
 
     for (int i = 0; i < game_state.sim_state.space.size(); i++) {
         Vector2i pos = game_state.sim_state.pos_at(i);
-        game_state.render_image.DrawPixel(pos.x, pos.y, rl::Color(15, 15, 15));
+        game_state.powder_image.DrawPixel(pos.x, pos.y, rl::Color(15, 15, 15));
     }
 
     SetMouseScale(320.0f / 1200.0f, 320.0f / 1200.0f);

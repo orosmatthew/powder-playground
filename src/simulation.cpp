@@ -84,7 +84,6 @@ void draw_column(rl::Image& render_image, rl::Image& gas_image, const SimState& 
             }
             else {
                 draw_particle(render_image, sim_state, { x, y });
-                gas_image.DrawPixel(x, y, rl::Color().Alpha(0));
             }
         }
     }
