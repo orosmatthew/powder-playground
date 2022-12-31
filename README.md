@@ -10,7 +10,7 @@ Powder Playground is a simple grid-based particle simulation inspired by [The Po
 
 Use the numbers keys (1-8) to select an element. Left-click to spawn element and right-click to delete.
 
-## Building Instructions
+## Build Instructions
 
 CMake is required
 
