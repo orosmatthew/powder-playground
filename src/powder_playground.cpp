@@ -189,7 +189,7 @@ void run()
     const int screen_width = 1200;
     const int screen_height = 900;
 
-    //    SetConfigFlags(FLAG_VSYNC_HINT);
+    SetConfigFlags(FLAG_VSYNC_HINT);
     SetTraceLogCallback(util::logger_callback_raylib);
 
     rl::Window window(screen_width, screen_height, "Powder Playground");
@@ -211,7 +211,7 @@ void run()
         .gas_image { 320, 240 },
         .powder_texture { game_state.powder_image },
         .gas_texture { game_state.gas_image },
-        .blur_shader { nullptr, "../res/blur.frag" },
+        .blur_shader { nullptr, "res/blur.frag" },
         .gas_render_texture { 1200, 900 },
     };
     LOG->set_level(spdlog::level::info);
