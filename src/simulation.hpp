@@ -11,49 +11,63 @@
 
 namespace pop {
 
+void draw_sim(
+    raylib::Image& render_image, raylib::Image& gas_image, const Simulation& simulation, BS::thread_pool& pool);
+
+using ElementId = uint32_t;
+
 struct Particle {
-    Element element = Element::e_air;
+    ElementId element_id = 0;
     float shade = 1.0f;
 };
 
-struct SimState {
-    const int width;
-    const int height;
-    std::vector<Particle> space;
+class Simulation {
+public:
+    Simulation(int width, int height);
 
-    [[nodiscard]] inline int index_at(Vector2i pos) const
-    {
-        return width * pos.y + pos.x;
-    }
+    void push_element(Element element);
 
-    [[nodiscard]] inline Vector2i pos_at(int i) const
-    {
-        return { i % width, i / width };
-    }
+    void update();
 
-    [[nodiscard]] inline bool in_bounds(Vector2i pos) const
-    {
-        return pos.x >= 0 && pos.x < width && pos.y >= 0 && pos.y < height;
-    }
+    void change_element(Vector2i pos, ElementId element_id);
 
-    [[nodiscard]] inline const Particle& particle_at(Vector2i pos) const
-    {
-        return space.at(index_at(pos));
-    }
+    void change_element(Vector2i pos, const std::string& element_name);
 
-    [[nodiscard]] inline Particle& particle_at(Vector2i pos)
-    {
-        return space.at(index_at(pos));
-    }
+    void clear_to(const std::string& element_name);
 
-    inline void swap(Vector2i pos1, Vector2i pos2)
-    {
-        std::swap(space.at(index_at(pos1)), space.at(index_at(pos2)));
-    }
+    [[nodiscard]] int width() const;
+
+    [[nodiscard]] int height() const;
+
+    [[nodiscard]] const Element element_at(Vector2i pos) const;
+
+    [[nodiscard]] const Element element_of(ElementId element_id) const;
+
+    [[nodiscard]] ElementId id_of(const std::string& element_name) const;
+
+    [[nodiscard]] ElementType type_of(ElementId element_id) const;
+
+    [[nodiscard]] ElementType type_at(Vector2i pos) const;
+
+    [[nodiscard]] int index_at(Vector2i pos) const;
+
+    [[nodiscard]] Vector2i pos_at(int i) const;
+
+    [[nodiscard]] bool in_bounds(Vector2i pos) const;
+
+    [[nodiscard]] const Particle& particle_at(Vector2i pos) const;
+
+    [[nodiscard]] Particle& particle_at(Vector2i pos);
+
+    void swap(Vector2i pos1, Vector2i pos2);
+
+private:
+    const int m_width;
+    const int m_height;
+    ElementId m_element_id_count = 1;
+    std::unordered_map<ElementId, Element> m_elements {};
+    std::unordered_map<std::string, ElementId> m_element_name_map {};
+    std::vector<Particle> m_space {};
 };
-
-void update_sim(SimState& sim_state);
-
-void draw_sim(raylib::Image& render_image, raylib::Image& gas_image, const SimState& sim_state, BS::thread_pool& pool);
 
 }

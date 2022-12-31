@@ -8,103 +8,143 @@ namespace rl = raylib;
 
 namespace pop {
 
-void update_particle(pop::SimState& sim_state, Vector2i particle_pos)
+void draw_particle(rl::Image& render_image, const Simulation& simulation, Vector2i pos)
 {
-    switch (sim_state.particle_at(particle_pos).element) {
-    case Element::e_salt:
-        update_salt(sim_state, particle_pos);
-        break;
-    case Element::e_water:
-        update_water(sim_state, particle_pos);
-        break;
-    case Element::e_stone:
-        update_stone(sim_state, particle_pos);
-        break;
-    case Element::e_air:
-    case Element::e_wall:
-        break;
-    case Element::e_lava:
-        update_lava(sim_state, particle_pos);
-        break;
-    case Element::e_steam:
-        update_steam(sim_state, particle_pos);
-        break;
-    case Element::e_toxic_gas:
-        update_toxic_gas(sim_state, particle_pos);
-        break;
-    }
+    render_image.DrawPixel(pos.x, pos.y, simulation.element_at(pos).color);
 }
 
-void update_sim(SimState& sim_state)
-{
-    std::vector<int> rand_indices;
-    rand_indices.reserve(sim_state.width);
-    for (int i = 0; i < sim_state.width; i++) {
-        rand_indices.push_back(i);
-    }
-
-    for (int y = sim_state.height - 1; y >= 0; y--) {
-        simple_shuffle(rand_indices);
-        for (int x : rand_indices) {
-            update_particle(sim_state, { x, y });
-        }
-    }
-}
-
-void draw_particle(rl::Image& render_image, const SimState& sim_state, Vector2i pos)
-{
-    switch (sim_state.particle_at(pos).element) {
-    case Element::e_air:
-        render_image.DrawPixel(pos.x, pos.y, rl::Color(15, 15, 15));
-        break;
-    case Element::e_salt:
-        render_image.DrawPixel(pos.x, pos.y, rl::Color::FromHSV(0.0f, 0.0f, sim_state.particle_at(pos).shade));
-        break;
-    case Element::e_water:
-        render_image.DrawPixel(pos.x, pos.y, rl::Color::FromHSV(243.0f, 0.9f, 1.0f));
-        break;
-    case Element::e_wall:
-        render_image.DrawPixel(pos.x, pos.y, rl::Color(120, 120, 120));
-        break;
-    case Element::e_lava:
-        render_image.DrawPixel(pos.x, pos.y, rl::Color(255, 94, 0));
-        break;
-    case Element::e_steam:
-        render_image.DrawPixel(pos.x, pos.y, rl::Color(106, 194, 255));
-        break;
-    case Element::e_stone:
-        render_image.DrawPixel(pos.x, pos.y, rl::Color(140, 140, 140));
-        break;
-    case Element::e_toxic_gas:
-        render_image.DrawPixel(pos.x, pos.y, rl::Color(165, 185, 0));
-        break;
-    }
-}
-
-void draw_column(rl::Image& render_image, rl::Image& gas_image, const SimState& sim_state, int start_col, int col_width)
+void draw_column(
+    rl::Image& render_image, rl::Image& gas_image, const Simulation& simulation, int start_col, int col_width)
 {
     for (int x = start_col * col_width; x < (start_col + 1) * col_width; x++) {
-        for (int y = 0; y < sim_state.height; y++) {
-            if (type_of(sim_state.particle_at({ x, y }).element) == ElementType::e_gas) {
-                draw_particle(gas_image, sim_state, { x, y });
+        for (int y = 0; y < simulation.height(); y++) {
+            if (simulation.type_at({ x, y }) == ElementType::e_gas) {
+                draw_particle(gas_image, simulation, { x, y });
             }
             else {
-                draw_particle(render_image, sim_state, { x, y });
+                draw_particle(render_image, simulation, { x, y });
             }
         }
     }
 }
 
-void draw_sim(rl::Image& render_image, rl::Image& gas_image, const SimState& sim_state, BS::thread_pool& pool)
+void draw_sim(rl::Image& render_image, rl::Image& gas_image, const Simulation& simulation, BS::thread_pool& pool)
 {
-    assert(render_image.width == sim_state.width && render_image.height == sim_state.height);
-
     for (int col = 0; col < 8; col++) {
-        pool.push_task([col, &sim_state, &render_image, &gas_image] {
-            draw_column(render_image, gas_image, sim_state, col, 40);
+        pool.push_task([col, &simulation, &render_image, &gas_image] {
+            draw_column(render_image, gas_image, simulation, col, 40);
         });
     }
     pool.wait_for_tasks();
+}
+
+int Simulation::index_at(Vector2i pos) const
+{
+    return m_width * pos.y + pos.x;
+}
+Vector2i Simulation::pos_at(int i) const
+{
+    return { i % m_width, i / m_width };
+}
+bool Simulation::in_bounds(Vector2i pos) const
+{
+    return pos.x >= 0 && pos.x < m_width && pos.y >= 0 && pos.y < m_height;
+}
+const Particle& Simulation::particle_at(Vector2i pos) const
+{
+    return m_space.at(index_at(pos));
+}
+Particle& Simulation::particle_at(Vector2i pos)
+{
+    return m_space.at(index_at(pos));
+}
+void Simulation::swap(Vector2i pos1, Vector2i pos2)
+{
+    std::swap(m_space.at(index_at(pos1)), m_space.at(index_at(pos2)));
+}
+
+Simulation::Simulation(int width, int height)
+    : m_width(width)
+    , m_height(height)
+{
+    for (int i = 0; i < m_width * m_height; i++) {
+        m_space.push_back({});
+    }
+}
+
+void Simulation::push_element(Element element)
+{
+    ElementId id = m_element_id_count;
+    m_element_id_count++;
+
+    m_elements.insert({ id, element });
+    m_element_name_map.insert({ element.name, id });
+}
+
+ElementId Simulation::id_of(const std::string& element_name) const
+{
+    return m_element_name_map.at(element_name);
+}
+
+void Simulation::update()
+{
+    std::vector<int> rand_indices;
+    rand_indices.reserve(m_width);
+    for (int i = 0; i < m_width; i++) {
+        rand_indices.push_back(i);
+    }
+
+    for (int y = m_height - 1; y >= 0; y--) {
+        simple_shuffle(rand_indices);
+        for (int x : rand_indices) {
+            std::invoke(m_elements.at(particle_at({ x, y }).element_id).update_func, *this, Vector2i { x, y });
+        }
+    }
+}
+int Simulation::width() const
+{
+    return m_width;
+}
+int Simulation::height() const
+{
+    return m_height;
+}
+
+ElementType Simulation::type_of(ElementId element_id) const
+{
+    return m_elements.at(element_id).type;
+}
+
+ElementType Simulation::type_at(Vector2i pos) const
+{
+    return type_of(particle_at(pos).element_id);
+}
+
+const Element Simulation::element_at(Vector2i pos) const
+{
+    return m_elements.at(particle_at(pos).element_id);
+}
+const Element Simulation::element_of(ElementId element_id) const
+{
+    return m_elements.at(element_id);
+}
+
+void Simulation::change_element(Vector2i pos, ElementId element_id)
+{
+    m_space.at(index_at(pos)).element_id = element_id;
+}
+
+void Simulation::change_element(Vector2i pos, const std::string& element_name)
+{
+    m_space.at(index_at(pos)).element_id = id_of(element_name);
+}
+
+void Simulation::clear_to(const std::string& element_name)
+{
+    ElementId id = id_of(element_name);
+    for (int i = 0; i < m_space.size(); i++) {
+        m_space.at(i).element_id = id;
+    }
 }
 
 }

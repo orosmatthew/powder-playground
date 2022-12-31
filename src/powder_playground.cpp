@@ -19,12 +19,12 @@ struct GameState {
     int screen_width;
     int screen_height;
 
-    SimState sim_state;
+    Simulation simulation;
 
     util::FixedLoop fixed_loop;
     BS::thread_pool thread_pool;
 
-    Element selected_type = Element::e_salt;
+    ElementId selected_element = 0;
 
     rl::Image powder_image;
     rl::Image gas_image;
@@ -36,59 +36,57 @@ struct GameState {
 
 void main_loop(GameState& game_state)
 {
-    SimState& sim_state = game_state.sim_state;
+    Simulation& simulation = game_state.simulation;
 
     if (IsKeyPressed(KEY_ONE)) {
-        game_state.selected_type = Element::e_air;
+        game_state.selected_element = simulation.id_of("air");
     }
     else if (IsKeyPressed(KEY_TWO)) {
-        game_state.selected_type = Element::e_wall;
+        game_state.selected_element = simulation.id_of("wall");
     }
     else if (IsKeyPressed(KEY_THREE)) {
-        game_state.selected_type = Element::e_salt;
+        game_state.selected_element = simulation.id_of("salt");
     }
     else if (IsKeyPressed(KEY_FOUR)) {
-        game_state.selected_type = Element::e_water;
+        game_state.selected_element = simulation.id_of("water");
     }
     else if (IsKeyPressed(KEY_FIVE)) {
-        game_state.selected_type = Element::e_lava;
+        game_state.selected_element = simulation.id_of("lava");
     }
     else if (IsKeyPressed(KEY_SIX)) {
-        game_state.selected_type = Element::e_steam;
+        game_state.selected_element = simulation.id_of("steam");
     }
     else if (IsKeyPressed(KEY_SEVEN)) {
-        game_state.selected_type = Element::e_stone;
+        game_state.selected_element = simulation.id_of("stone");
     }
     else if (IsKeyPressed(KEY_EIGHT)) {
-        game_state.selected_type = Element::e_toxic_gas;
+        game_state.selected_element = simulation.id_of("toxic_gas");
     }
 
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         rl::Vector2 mouse_pos = GetMousePosition();
         Vector2i sim_pos { (int)mouse_pos.x, (int)mouse_pos.y };
-        if (sim_state.in_bounds(sim_pos)) {
-            sim_state.particle_at(sim_pos).element = game_state.selected_type;
-            if (game_state.selected_type == Element::e_salt) {
-                sim_state.particle_at(sim_pos).shade = (float)GetRandomValue(750, 1000) / 1000.0f;
-            }
+        if (simulation.in_bounds(sim_pos)) {
+            simulation.particle_at(sim_pos).element_id = game_state.selected_element;
+            //            if (game_state.selected_type == Element::e_salt) {
+            //                sim_state.particle_at(sim_pos).shade = (float)GetRandomValue(750, 1000) / 1000.0f;
+            //            }
         }
     }
     else if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
         rl::Vector2 mouse_pos = GetMousePosition();
         Vector2i sim_pos { (int)mouse_pos.x, (int)mouse_pos.y };
-        if (sim_state.in_bounds(sim_pos)) {
-            sim_state.particle_at(sim_pos).element = Element::e_air;
+        if (simulation.in_bounds(sim_pos)) {
+            simulation.particle_at(sim_pos).element_id = simulation.id_of("air");
         }
     }
 
-    game_state.fixed_loop.update(20, [&]() {
-        update_sim(sim_state);
-    });
+    game_state.fixed_loop.update(20, [&]() { simulation.update(); });
 
     game_state.powder_image.ClearBackground(rl::Color().Alpha(0));
     game_state.gas_image.ClearBackground(rl::Color().Alpha(0));
 
-    draw_sim(game_state.powder_image, game_state.gas_image, sim_state, game_state.thread_pool);
+    draw_sim(game_state.powder_image, game_state.gas_image, simulation, game_state.thread_pool);
 
     game_state.powder_texture.Update(game_state.powder_image.data);
     game_state.gas_texture.Update(game_state.gas_image.data);
@@ -98,13 +96,13 @@ void main_loop(GameState& game_state)
         ClearBackground(rl::Color(15, 15, 15));
 
         game_state.powder_texture.Draw(
-            rl::Rectangle(0, 0, (float)sim_state.width, (float)sim_state.height),
+            rl::Rectangle(0, 0, (float)simulation.width(), (float)simulation.height()),
             rl::Rectangle(0, 0, (float)game_state.screen_width, (float)game_state.screen_height));
 
         game_state.gas_render_texture.BeginMode();
         ClearBackground(rl::Color().Alpha(0));
         game_state.gas_texture.Draw(
-            rl::Rectangle(0, 0, (float)sim_state.width, (float)sim_state.height),
+            rl::Rectangle(0, 0, (float)simulation.width(), (float)simulation.height()),
             rl::Rectangle(0, 0, (float)game_state.screen_width, (float)game_state.screen_height));
         game_state.gas_render_texture.EndMode();
 
@@ -114,9 +112,76 @@ void main_loop(GameState& game_state)
 
         DrawFPS(10, 10);
 
-        rl::DrawText(to_string(game_state.selected_type), 10, 50, 20, rl::Color::Yellow());
+        rl::DrawText(simulation.element_of(game_state.selected_element).friendly_name, 10, 50, 20, rl::Color::Yellow());
     }
     EndDrawing();
+}
+
+void init_elements(Simulation& simulation)
+{
+    Element air {};
+    air.name = "air";
+    air.friendly_name = "Air";
+    air.type = ElementType::e_null;
+    air.update_func = [](Simulation&, Vector2i) {};
+    air.color = rl::Color(15, 15, 15);
+    simulation.push_element(air);
+
+    Element wall {};
+    wall.name = "wall";
+    wall.friendly_name = "Wall";
+    wall.type = ElementType::e_solid;
+    wall.update_func = [](Simulation&, Vector2i) {};
+    wall.color = rl::Color(120, 120, 120);
+    simulation.push_element(wall);
+
+    Element salt {};
+    salt.name = "salt";
+    salt.friendly_name = "Salt";
+    salt.type = ElementType::e_powder;
+    salt.update_func = update_salt;
+    salt.color = rl::Color::FromHSV(0.0f, 0.0f, 1.0f);
+    simulation.push_element(salt);
+
+    Element water {};
+    water.name = "water";
+    water.friendly_name = "Water";
+    water.type = ElementType::e_liquid;
+    water.update_func = update_water;
+    water.color = rl::Color::FromHSV(243.0f, 0.9f, 1.0f);
+    simulation.push_element(water);
+
+    Element lava {};
+    lava.name = "lava";
+    lava.friendly_name = "Lava";
+    lava.type = ElementType::e_liquid;
+    lava.update_func = update_lava;
+    lava.color = rl::Color(255, 94, 0);
+    simulation.push_element(lava);
+
+    Element steam {};
+    steam.name = "steam";
+    steam.friendly_name = "Steam";
+    steam.type = ElementType::e_gas;
+    steam.update_func = update_steam;
+    steam.color = rl::Color(106, 194, 255);
+    simulation.push_element(steam);
+
+    Element stone {};
+    stone.name = "stone";
+    stone.friendly_name = "Stone";
+    stone.type = ElementType::e_powder;
+    stone.update_func = update_stone;
+    stone.color = rl::Color(140, 140, 140);
+    simulation.push_element(stone);
+
+    Element toxic_gas {};
+    toxic_gas.name = "toxic_gas";
+    toxic_gas.friendly_name = "Toxic Gas";
+    toxic_gas.type = ElementType::e_gas;
+    toxic_gas.update_func = update_toxic_gas;
+    toxic_gas.color = rl::Color(165, 185, 0);
+    simulation.push_element(toxic_gas);
 }
 
 void run()
@@ -129,22 +194,21 @@ void run()
 
     rl::Window window(screen_width, screen_height, "Powder Playground");
 
-    SimState sim_state { .width = 320, .height = 240 };
-    sim_state.space = std::vector<Particle>();
-    for (int i = 0; i < sim_state.width * sim_state.height; i++) {
-        sim_state.space.push_back({});
-    }
+    Simulation simulation(320, 240);
+
+    init_elements(simulation);
+    simulation.clear_to("air");
 
     LOG->set_level(spdlog::level::err);
     GameState game_state {
         .screen_width = screen_width,
         .screen_height = screen_height,
-        .sim_state = sim_state,
+        .simulation = std::move(simulation),
         .fixed_loop = util::FixedLoop(240),
         .thread_pool {},
-        .selected_type = Element::e_salt,
-        .powder_image { game_state.sim_state.width, game_state.sim_state.height },
-        .gas_image { game_state.sim_state.width, game_state.sim_state.height },
+        .selected_element = 1,
+        .powder_image { 320, 240 },
+        .gas_image { 320, 240 },
         .powder_texture { game_state.powder_image },
         .gas_texture { game_state.gas_image },
         .blur_shader { nullptr, "../res/blur.frag" },
@@ -157,11 +221,6 @@ void run()
     const rl::Vector2 blur_shader_resolution { screen_width, screen_height };
     game_state.blur_shader.SetValue(
         game_state.blur_shader.GetLocation("resolution"), &blur_shader_resolution, SHADER_UNIFORM_VEC2);
-
-    for (int i = 0; i < game_state.sim_state.space.size(); i++) {
-        Vector2i pos = game_state.sim_state.pos_at(i);
-        game_state.powder_image.DrawPixel(pos.x, pos.y, rl::Color(15, 15, 15));
-    }
 
     SetMouseScale(320.0f / 1200.0f, 320.0f / 1200.0f);
 

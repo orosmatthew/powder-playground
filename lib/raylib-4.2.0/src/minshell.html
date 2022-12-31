@@ -60,14 +60,14 @@
         <script>
             var Module = {
                 print: (function() {
-                    var element = document.getElementById('output');
-                    if (element) element.value = ''; // clear browser cache
+                    var element_id = document.getElementById('output');
+                    if (element_id) element_id.value = ''; // clear browser cache
                     return function(text) {
                         if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
                         console.log(text);
-                        if (element) {
-                          element.value += text + "\n";
-                          element.scrollTop = element.scrollHeight; // focus on bottom
+                        if (element_id) {
+                          element_id.value += text + "\n";
+                          element_id.scrollTop = element_id.scrollHeight; // focus on bottom
                         }
                     };
                 })(),
