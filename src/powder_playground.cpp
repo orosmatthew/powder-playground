@@ -68,9 +68,9 @@ void main_loop(GameState& game_state)
         Vector2i sim_pos { (int)mouse_pos.x, (int)mouse_pos.y };
         if (simulation.in_bounds(sim_pos)) {
             simulation.particle_at(sim_pos).element_id = game_state.selected_element;
-            //            if (game_state.selected_type == Element::e_salt) {
-            //                sim_state.particle_at(sim_pos).shade = (float)GetRandomValue(750, 1000) / 1000.0f;
-            //            }
+            if (game_state.selected_element == simulation.id_of("salt")) {
+                simulation.particle_at(sim_pos).shade = (float)GetRandomValue(750, 1000) / 1000.0f;
+            }
         }
     }
     else if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {

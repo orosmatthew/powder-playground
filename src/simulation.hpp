@@ -45,6 +45,8 @@ public:
 
     [[nodiscard]] ElementId id_of(const std::string& element_name) const;
 
+    [[nodiscard]] ElementId id_at(Vector2i pos) const;
+
     [[nodiscard]] ElementType type_of(ElementId element_id) const;
 
     [[nodiscard]] ElementType type_at(Vector2i pos) const;

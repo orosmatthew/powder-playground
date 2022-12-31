@@ -10,7 +10,12 @@ namespace pop {
 
 void draw_particle(rl::Image& render_image, const Simulation& simulation, Vector2i pos)
 {
-    render_image.DrawPixel(pos.x, pos.y, simulation.element_at(pos).color);
+    rl::Vector3 hsv = simulation.element_at(pos).color.ToHSV();
+    if (simulation.element_at(pos).name == "salt") {
+        hsv.z = simulation.particle_at(pos).shade;
+    }
+
+    render_image.DrawPixel(pos.x, pos.y, rl::Color::FromHSV(hsv.x, hsv.y, hsv.z));
 }
 
 void draw_column(
@@ -145,6 +150,10 @@ void Simulation::clear_to(const std::string& element_name)
     for (int i = 0; i < m_space.size(); i++) {
         m_space.at(i).element_id = id;
     }
+}
+ElementId Simulation::id_at(Vector2i pos) const
+{
+    return particle_at(pos).element_id;
 }
 
 }
